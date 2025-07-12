@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content Generator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Basic prose styling for generated content */
+        .prose {
+            line-height: 1.75;
+            color: #4a5568; /* gray-700 */
+        }
+        .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+            color: #2d3748; /* gray-800 */
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            font-weight: 700;
+        }
+        .prose p {
+            margin-bottom: 1em;
+        }
+        .prose ul, .prose ol {
+            margin-left: 1.5em;
+            margin-bottom: 1em;
+            list-style-position: outside;
+        }
+        .prose ul {
+            list-style-type: disc;
+        }
+        .prose ol {
+            list-style-type: decimal;
+        }
+        .prose a {
+            color: #8b5cf6; /* purple-500 */
+            text-decoration: underline;
+        }
+        .prose pre {
+            background-color: #e2e8f0; /* gray-200 */
+            padding: 1em;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+        }
+        .prose code {
+            background-color: #e2e8f0; /* gray-200 */
+            padding: 0.2em 0.4em;
+            border-radius: 0.25rem;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-4 sm:p-6 lg:p-8 flex items-center justify-center">
+    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-xl p-6 sm:p-8 lg:p-10 border border-gray-200">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-gray-800 mb-6 leading-tight">
+            AI Content Generator
+        </h1>
+        <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">
+            Unleash the power of AI to generate content on various topics. Simply enter your topic below and let the AI do the writing!
+        </p>
+
+        <!-- Input Area -->
+        <div class="mb-6">
+            <label for="prompt" class="block text-gray-700 text-lg font-semibold mb-2">
+                Your Topic:
+            </label>
+            <textarea
+                id="prompt"
+                class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-transparent transition duration-200 ease-in-out resize-y min-h-[120px] text-gray-800 text-base shadow-sm"
+                placeholder="e.g., Write a short story about a futuristic city powered by renewable energy."
+                rows="6"
+            ></textarea>
+        </div>
+
+        <!-- Generate Button -->
+        <div class="flex justify-center mb-8">
+            <button
+                id="generateButton"
+                class="px-8 py-3 rounded-full text-lg font-bold transition duration-300 ease-in-out transform bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 focus:ring-purple-300"
+            >
+                Generate Content
+            </button>
+        </div>
+
+        <!-- Loading and Error Messages -->
+        <div id="loadingMessage" class="hidden flex items-center justify-center text-purple-600 text-lg font-medium mb-4">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Please wait, AI is crafting your content...
+        </div>
+
+        <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl relative mb-6 shadow-sm" role="alert">
+            <strong class="font-bold">Error!</strong>
+            <span class="block sm:inline ml-2" id="errorText"></span>
+        </div>
+
+        <!-- Generated Content Display -->
+        <div id="generatedContentDisplay" class="hidden mt-8 bg-gray-50 p-6 rounded-2xl border border-gray-200 shadow-inner">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-purple-200 pb-2">
+                Generated Content:
+            </h2>
+            <div id="generatedText" class="prose max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
+                <!-- Generated content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const promptInput = document.getElementById('prompt');
+        const generateButton = document.getElementById('generateButton');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const generatedContentDisplay = document.getElementById('generatedContentDisplay');
+        const generatedText = document.getElementById('generatedText');
+
+        /**
+         * Toggles the loading state of the application.
+         * @param {boolean} isLoading - True to show loading, false to hide.
+         */
+        function setLoadingState(isLoading) {
+            if (isLoading) {
+                loadingMessage.classList.remove('hidden');
+                generateButton.disabled = true;
+                generateButton.classList.add('bg-purple-300', 'cursor-not-allowed', 'animate-pulse');
+                generateButton.classList.remove('bg-purple-600', 'hover:bg-purple-700', 'shadow-lg', 'hover:shadow-xl', 'active:scale-95');
+            } else {
+                loadingMessage.classList.add('hidden');
+                generateButton.disabled = false;
+                generateButton.classList.remove('bg-purple-300', 'cursor-not-allowed', 'animate-pulse');
+                generateButton.classList.add('bg-purple-600', 'hover:bg-purple-700', 'shadow-lg', 'hover:shadow-xl', 'active:scale-95');
+            }
+        }
+
+        /**
+         * Displays an error message.
+         * @param {string} message - The error message to display.
+         */
+        function displayError(message) {
+            errorMessage.classList.remove('hidden');
+            errorText.textContent = message;
+        }
+
+        /**
+         * Clears any displayed error messages.
+         */
+        function clearError() {
+            errorMessage.classList.add('hidden');
+            errorText.textContent = '';
+        }
+
+        /**
+         * Handles the generation of content by calling the Gemini API.
+         * @async
+         * @function handleGenerateContent
+         */
+        async function handleGenerateContent() {
+            // Clear previous content and error messages
+            generatedText.textContent = '';
+            generatedContentDisplay.classList.add('hidden');
+            clearError();
+            setLoadingState(true); // Set loading to true
+
+            const prompt = promptInput.value.trim();
+
+            if (prompt === '') {
+                displayError("Please enter a prompt before generating content.");
+                setLoadingState(false);
+                return;
+            }
+
+            try {
+                // Prepare the chat history for the API request
+                const chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+                // Prepare the payload for the Gemini API
+                const payload = { contents: chatHistory };
+
+                // API key (empty string as Canvas provides it at runtime for gemini-2.0-flash)
+                const apiKey = "AIzaSyDar4x-HSQpMmsevcMfLWoio942t7ClHv4";
+                // Gemini API endpoint for text generation
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                // Make the API call
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                // Check if the response was successful
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                // Check if the response contains generated content
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    generatedText.textContent = text; // Update DOM with generated content
+                    generatedContentDisplay.classList.remove('hidden'); // Show generated content section
+                } else {
+                    // Handle cases where the response structure is unexpected or content is missing
+                    displayError("No content generated. Please try a different prompt.");
+                }
+            } catch (err) {
+                console.error("Error generating content:", err);
+                displayError(`Failed to generate content: ${err.message}. Please try again.`);
+            } finally {
+                setLoadingState(false); // Set loading to false regardless of success or failure
+            }
+        }
+
+        // Add event listener to the button
+        generateButton.addEventListener('click', handleGenerateContent);
+
+        // Add input event listener to disable/enable button based on prompt content
+        promptInput.addEventListener('input', () => {
+            if (promptInput.value.trim() === '') {
+                generateButton.disabled = true;
+                generateButton.classList.add('bg-purple-300', 'cursor-not-allowed');
+                generateButton.classList.remove('bg-purple-600', 'hover:bg-purple-700', 'shadow-lg', 'hover:shadow-xl', 'active:scale-95');
+            } else {
+                generateButton.disabled = false;
+                generateButton.classList.remove('bg-purple-300', 'cursor-not-allowed');
+                generateButton.classList.add('bg-purple-600', 'hover:bg-purple-700', 'shadow-lg', 'hover:shadow-xl', 'active:scale-95');
+            }
+        });
+
+        // Initialize button state on page load
+        if (promptInput.value.trim() === '') {
+            generateButton.disabled = true;
+            generateButton.classList.add('bg-purple-300', 'cursor-not-allowed');
+            generateButton.classList.remove('bg-purple-600', 'hover:bg-purple-700', 'shadow-lg', 'hover:shadow-xl', 'active:scale-95');
+        }
+    </script>
+</body>
+</html>
