@@ -35,7 +35,7 @@ For local testing, you can modify the `index.html` file:
 
     ```javascript
     // API key (empty string as Canvas provides it at runtime for gemini-2.0-flash)
-    const apiKey = "AIzaSyDar4x-HSQpMmsevcMfLWoio942t7ClHv4"; // <-- REPLACE THIS
+    const apiKey = "your api key"; // <-- REPLACE THIS
     ```
 
 3.  Replace the placeholder value with your actual Google AI API Key.
