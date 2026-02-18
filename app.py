@@ -96,10 +96,10 @@ def generate_content():
             outputs = model.generate(
                 **inputs,
                 max_length=max_length,
-                min_length=150,
+                min_length=250,
                 num_beams=5,
                 no_repeat_ngram_size=3,
-                length_penalty=2.0,
+                length_penalty=2.5,
                 early_stopping=True,
                 temperature=0.85,
                 do_sample=True,
