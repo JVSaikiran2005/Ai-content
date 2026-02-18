@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Content Generator</title>
+    <title>AI Content Generator - Local ML Model</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -113,6 +115,9 @@
     </div>
 
     <script>
+        // Configuration
+        const API_BASE_URL = 'http://127.0.0.1:5000/api';
+        
         // Get references to DOM elements
         const promptInput = document.getElementById('prompt');
         const generateButton = document.getElementById('generateButton');
@@ -158,7 +163,7 @@
         }
 
         /**
-         * Handles the generation of content by calling the Gemini API.
+         * Handles the generation of content by calling the Flask backend.
          * @async
          * @function handleGenerateContent
          */
@@ -167,7 +172,7 @@
             generatedText.textContent = '';
             generatedContentDisplay.classList.add('hidden');
             clearError();
-            setLoadingState(true); // Set loading to true
+            setLoadingState(true);
 
             const prompt = promptInput.value.trim();
 
@@ -178,49 +183,43 @@
             }
 
             try {
-                // Prepare the chat history for the API request
-                const chatHistory = [];
-                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-
-                // Prepare the payload for the Gemini API
-                const payload = { contents: chatHistory };
-
-                // API key (empty string as Canvas provides it at runtime for gemini-2.0-flash)
-                const apiKey = "";
-                // Gemini API endpoint for text generation
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-                // Make the API call
-                const response = await fetch(apiUrl, {
+                // Make the request to the Flask backend
+                const response = await fetch(`${API_BASE_URL}/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        max_length: 500,
+                        temperature: 0.8
+                    })
                 });
 
                 // Check if the response was successful
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                 }
 
                 const result = await response.json();
 
                 // Check if the response contains generated content
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    generatedText.textContent = text; // Update DOM with generated content
-                    generatedContentDisplay.classList.remove('hidden'); // Show generated content section
+                if (result.success && result.generated_content) {
+                    generatedText.textContent = result.generated_content;
+                    generatedContentDisplay.classList.remove('hidden');
                 } else {
-                    // Handle cases where the response structure is unexpected or content is missing
-                    displayError("No content generated. Please try a different prompt.");
+                    displayError(result.error || "No content generated. Please try a different prompt.");
                 }
             } catch (err) {
                 console.error("Error generating content:", err);
-                displayError(`Failed to generate content: ${err.message}. Please try again.`);
+                
+                // Check if it's a connection error
+                if (err.message.includes('Failed to fetch')) {
+                    displayError("Cannot connect to the Flask backend. Make sure it's running on http://127.0.0.1:5000");
+                } else {
+                    displayError(`Failed to generate content: ${err.message}. Please try again.`);
+                }
             } finally {
-                setLoadingState(false); // Set loading to false regardless of success or failure
+                setLoadingState(false);
             }
         }
 
@@ -240,12 +239,28 @@
             }
         });
 
+        // Check backend connection on page load
+        async function checkBackendConnection() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Backend is running:', data);
+                }
+            } catch (err) {
+                console.warn('Backend not accessible yet. Make sure to run: python app.py');
+            }
+        }
+
         // Initialize button state on page load
         if (promptInput.value.trim() === '') {
             generateButton.disabled = true;
             generateButton.classList.add('bg-purple-300', 'cursor-not-allowed');
             generateButton.classList.remove('bg-purple-600', 'hover:bg-purple-700', 'shadow-lg', 'hover:shadow-xl', 'active:scale-95');
         }
+
+        // Check backend connection when page loads
+        window.addEventListener('load', checkBackendConnection);
     </script>
 </body>
 
