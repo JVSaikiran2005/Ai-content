@@ -96,11 +96,15 @@ def generate_content():
             outputs = model.generate(
                 **inputs,
                 max_length=max_length,
-                min_length=50,
-                num_beams=4,
+                min_length=150,
+                num_beams=5,
+                no_repeat_ngram_size=3,
+                length_penalty=2.0,
                 early_stopping=True,
-                temperature=temperature,
-                do_sample=temperature > 0.1
+                temperature=0.85,
+                do_sample=True,
+                top_p=0.92,
+                top_k=50
             )
 
         content = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
